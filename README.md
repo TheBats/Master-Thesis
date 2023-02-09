@@ -10,11 +10,15 @@ I have to study which aggregation function is the most robust and build some mat
 
 ## Installation
 
-The code works in an conda environment with python 3.10. The requirements can be installed by running `conda create -n <environment-name> --file req.txt`
+The code works in an conda environment with python 3.10. 
+The requirements can be installed by running `conda create -n <environment-name> --file spec-file.txt`
 
+Conda is available here: https://docs.conda.io/projects/conda/en/latest/user-guide/install
 ## Running
-1. Call `custom_data_splitting(number_participants=1)` from `data_preparation.py` with the wanted number of participants (I use 15) to create the training sets. 
-2. Build the necessary directories that will store the results by calling `build_directories()` in `data_preparation.py`
+1. Create the training sets
+`$python ./data_preparation.py create-splits n_participants=15`
+2. Build the result directories
+`$python ./data_preparation.py build-directories`
 3. Run `main.py`. There are currently 10 parameters one can change; learning rate (lr), the number of workers, rounds, attack, number of attackers (f), optimizer, loss, aggregattion method, save.
 
 ## Currently implemented aggregation methods and attacks
