@@ -69,7 +69,6 @@ def custom_data_splitting(number_participants=1):
     return train_loaders
 
 def build_directories():
-
 	if not os.path.isdir("results"):
 		os.makedirs("results")
 	if not os.path.isdir("results/train_loss"):
@@ -82,9 +81,13 @@ def build_directories():
 			os.makedirs(f"{p}/1_moment")
 		if not os.path.isdir(f"{p}/2_moments"):
 			os.makedirs(f"{p}/2_moments")
+		if not os.path.isdir(f"{p}/2_2_moments"):
+			os.makedirs(f"{p}/2_2_moments")
 
 		for attack in ["little", "sign_flip", "label_flip"]:
 			if not os.path.isdir(f"{p}/1_moment/{attack}"):
 				os.makedirs(f"{p}/1_moment/{attack}")
 			if not os.path.isdir(f"{p}/2_moments/{attack}"):
 				os.makedirs(f"{p}/2_moments/{attack}")
+			if not os.path.isdir(f"{p}/2_2_moments/{attack}"):
+				os.makedirs(f"{p}/2_2_moments/{attack}")

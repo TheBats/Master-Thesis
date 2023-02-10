@@ -11,16 +11,17 @@ from data_preparation import read_data
 
 class Worker():
 	
-	def __init__(self, dataset: datasets, model: nn.Module, loss: nn, beta=0.99,
-				 attack="None", eps=10e-8, number_moments=1):
+	def __init__(self, dataset: datasets, model: nn.Module, loss: nn, beta,
+				 number_moments, get_two_moments, attack="None", eps=10e-8):
 
-		print(attack)
+		# print(f"Moments: {number_moments} Get Two Moments: {get_two_moments}")
 		self.dataset = dataset
 		self.model = model.to("cuda")
-		self.loss = loss
+		self.loss = nn.CrossEntropyLoss()
 		self.iterator = iter(dataset)
 		self.attack = attack
 		self.number_moments = number_moments
+		self.get_two_moments = get_two_moments
 
 		self.beta = beta
 		self.eps = eps
@@ -65,7 +66,7 @@ class Worker():
 		grads = []
 
 		for i in self.model.parameters():
-			grads.append(i.grad)
+			grads.append(torch.clip(i.grad, min=-2, max=2))
 			params.append(i)
 
 		# First moment computation
@@ -93,18 +94,52 @@ class Worker():
 					unbiased2 = torch._foreach_div(self.moment2, (1 - self.beta[1] ** self.steps))
 					self.steps += 1 
 
-					# Aggregate the momentums
-					sqrt = torch._foreach_sqrt(self.moment2) #unbiased2)
-					torch._foreach_add_(sqrt, self.eps)
-					new = torch._foreach_div(self.moment1, sqrt)
-
-					return (loss, new)
+					if self.get_two_moments:
+						return (loss, unbiased1, unbiased2)
+					else:
+						sqrt = torch._foreach_sqrt(unbiased2) #unbiased2)
+						torch._foreach_add_(sqrt, self.eps)
+						new = torch._foreach_div(unbiased1, sqrt)
+						return (loss, new)
 
 			case "sign_flip":
-				flipped_moments = []
-				[flipped_moments.append(-m) for m in self.moment1]
+				if self.number_moments == 1:
+					flipped_moments = []
+					[flipped_moments.append(-m) for m in self.moment1]
+					return (loss, flipped_moments)
+				else:
 
-				return (loss, flipped_moments)
+					# Correct the bias
+					unbiased1 = torch._foreach_div(self.moment1, (1 - self.beta[0] ** self.steps))
+					unbiased2 = torch._foreach_div(self.moment2, (1 - self.beta[1] ** self.steps))
+					self.steps += 1 
+
+					if self.get_two_moments:
+						flipped_moments1 = []
+						[flipped_moments1.append(-m) for m in unbiased1]
+
+						flipped_moments2 = []
+						[flipped_moments2.append(-m) for m in unbiased2]
+
+						return (loss, flipped_moments1, flipped_moments2)
+
+					else:
+						sqrt = torch._foreach_sqrt(unbiased2) #unbiased2)
+						torch._foreach_add_(sqrt, self.eps)
+						new = torch._foreach_div(unbiased1, sqrt)
+
+						flipped_moments = []
+						[flipped_moments.append(-m) for m in new]
+						return (loss, flipped_moments)
+
+
+	def aggregate_momentums(self):
+		# Aggregate the momentums
+		sqrt = torch._foreach_sqrt(self.moment2) #unbiased2)
+		torch._foreach_add_(sqrt, self.eps)
+		new = torch._foreach_div(self.moment1, sqrt)
+
+		return new
 
 	def test(self, testset):
 		correct = 0 
