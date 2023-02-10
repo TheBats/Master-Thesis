@@ -66,7 +66,7 @@ class Worker():
 		grads = []
 
 		for i in self.model.parameters():
-			grads.append(torch.clip(i.grad, min=-2, max=2))
+			grads.append(i.grad) #torch.clip(i.grad, min=-2, max=2))
 			params.append(i)
 
 		# First moment computation

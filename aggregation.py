@@ -1,16 +1,30 @@
-import numpy as np
 import torch
+
+import numpy as np
 
 # Average of all 
 def avg(to_aggregate):
 	for idx, m in enumerate(to_aggregate):
 		to_aggregate[idx] = torch.mean(m, 0)
+
 	return to_aggregate
+
 
 # Minimum Diameter Averaging
 # 1. Choose a set of minimum cardinality of n-f items with smallest diameter
-def mda(to_aggregate):
-    pass
+def mda(to_aggregate, n_minus_f):
+	for idx, m in enumerate(to_aggregate):
+		distances = np.zeros((m.size()[0], m.size()[0]))
+		for sub_idx, sub_m in enumerate(m):
+			for sub_sub_idx, sub_sub_m in enumerate(m):
+				distances[sub_idx, sub_sub_idx] = np.linalg.norm((sub_sub_m-sub_m).cpu()) # torch.linalg.norm((sub_sub_m-sub_m), dim=1).sum(dim=1).sum(dim=1).sum(dim=1)
+
+		sum_dist = np.sum(distances, 1)
+		sort_idx = np.argsort(sum_dist)
+		
+		to_aggregate[idx] = torch.mean(m[sort_idx[:n_minus_f]], 0)
+
+	return to_aggregate
 
 
 # Coordinate-Wise Trimmed Mean
@@ -19,9 +33,8 @@ def mda(to_aggregate):
 # 3. Divide by n-2f
 def cwtm(to_aggregate, n, f):
 	for idx, m in enumerate(to_aggregate):
-		sorted_m, _ = torch.sort(m, 0) #, descending=True)
-		to_aggregate[idx] = torch.sum(sorted_m[f+1:n-f], 0)
-		to_aggregate[idx] = to_aggregate[idx]/(n-(2*f))
+		sorted_m, _ = torch.sort(m, 0) 
+		to_aggregate[idx] = torch.mean(sorted_m[range(f+1,n-f)], 0)
 
 	return to_aggregate
 
@@ -33,7 +46,7 @@ def cwtm(to_aggregate, n, f):
 def meamed(to_aggregate, n_minus_f):
 	for idx, m in enumerate(to_aggregate):
 		median = torch.median(m, 0)[0]
-		dist = torch.abs(m-median)
+		dist = torch.sqrt(torch.pow(m-median, 2))
 		_, sorted_idx = torch.sort(dist, 0)
 		sorted_m = torch.gather(m, 0, sorted_idx)
 		to_aggregate[idx] = torch.mean(sorted_m[:n_minus_f], 0)
@@ -46,7 +59,6 @@ def cwm(to_aggregate):
 	for idx, m in enumerate(to_aggregate):
 		to_aggregate[idx] = torch.median(m, 0)[0]
 
-	# print(to_aggregate)
 	return to_aggregate
 
 # Geometric Median
@@ -77,5 +89,4 @@ def krum(to_aggregate, n_minus_f_minus_1, q):
         print(f"To aggregate: {to_aggregate[selection]}")
         return to_aggregate[selection]
 
-
-# cwm([torch.tensor([[1, 5, 1], [5, 1, 1], [5, 1, 1]]), torch.tensor([[1, 5, 1], [5, 1, 1], [5, 1, 1]])])
+# print(mda([torch.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [5.0, 1.0, 1.0], [5.0, 1.0, 1.0], [2.5, 10, 11]])], 4))

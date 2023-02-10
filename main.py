@@ -25,7 +25,7 @@ random.seed(seed)
 torch.backends.cudnn.benchmark = False
 torch.backends.cudnn.deterministic = True
 
-save = True
+save = False
 number_workers = 15
 rounds = 500
 f = 5 # Number of attackers 
@@ -36,7 +36,7 @@ get_two_moments = False
 print(get_two_moments)
 
 lr = 0.001 if number_moments == 2 else 0.75
-beta = (0.99, 0.999)
+beta = (0.9, 0.999)
 eps = 10e-8
 
 loss = nn.CrossEntropyLoss
@@ -45,8 +45,8 @@ test_loader = get_test_set()
 data = read_data(number_workers)
 worker = []
 
-for attack in ["little","sign_flip", "label_flip"]:
-	for aggregation_method in ["avg", "cwm", "meamed", "cwtm"]:
+for attack in ["little"]: #,"sign_flip", "label_flip"]:
+	for aggregation_method in ["mda"]: #, "avg", "cwm", "meamed", "cwtm"]:
 		torch.manual_seed(seed)
 		model = CnnMist()
 
@@ -119,6 +119,10 @@ for attack in ["little","sign_flip", "label_flip"]:
 					aggregated = aggregation.cwm(moments1)
 					if get_two_moments:
 						aggregated2 = aggregation.cwm(moments2)
+				case "mda":
+					aggregated = aggregation.mda(moments1, number_workers-f)
+					if get_two_moments:
+						aggregated2 = aggregation.mda(moments1, number_workers-f)
 
 			if get_two_moments and number_moments == 2:
 				# Aggregate the momentums
