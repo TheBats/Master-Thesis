@@ -6,10 +6,13 @@ import dash
 import torch.nn as nn
 import numpy as np
 import plotly.graph_objects as go
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
 from model import CnnMist
-from data_preparation import read_data, get_test_set
+from data_preparation import read_homogenous_data, read_heterogenous_data, get_test_set
 from worker import Worker
+
 import aggregation
 import attacks
 
@@ -25,28 +28,30 @@ random.seed(seed)
 torch.backends.cudnn.benchmark = False
 torch.backends.cudnn.deterministic = True
 
-save = False
+save = True
+plot = False
+heter = False
+alpha = 0.1
 number_workers = 15
 rounds = 500
 f = 5 # Number of attackers 
 
 number_moments = 1
 get_two_moments = False
-
-print(get_two_moments)
+beta = (0.9, 0.999)
 
 lr = 0.001 if number_moments == 2 else 0.75
-beta = (0.9, 0.999)
 eps = 10e-8
+weight_decay = 10e-4
 
 loss = nn.CrossEntropyLoss
 
 test_loader = get_test_set()
-data = read_data(number_workers)
+data = read_heterogenous_data(number_workers, alpha) if heter else read_homogenous_data(15)
 worker = []
 
-for attack in ["little"]: #,"sign_flip", "label_flip"]:
-	for aggregation_method in ["mda"]: #, "avg", "cwm", "meamed", "cwtm"]:
+for attack in ["-inf", "inf"]: 
+	for aggregation_method in ["cwtm", "cwm", "mda", "avg", "meamed"]: 
 		torch.manual_seed(seed)
 		model = CnnMist()
 
@@ -56,8 +61,8 @@ for attack in ["little"]: #,"sign_flip", "label_flip"]:
 		for idx, d in enumerate(data):
 			local_model = copy.deepcopy(model)
 			new_worker = Worker(dataset=d, model=local_model, loss=loss, number_moments=number_moments,
-								attack = attack if idx < f and attack in ["sign_flip", "label_flip"] else "None",
-								beta = beta, get_two_moments=get_two_moments)
+								attack = attack if idx < f and attack in ["sign_flip", "label_flip", "-inf", "inf"] else "none",
+								beta = beta, get_two_moments=get_two_moments, weight_decay=weight_decay)
 
 			worker.append(new_worker)
 
@@ -70,7 +75,7 @@ for attack in ["little"]: #,"sign_flip", "label_flip"]:
 			moments1 = []
 			moments2 = []
 
-			# accuracies[0, r] = worker[0].test(test_loader)
+			accuracies[0, r] = worker[0].test(test_loader)
 
 			for w in range(number_workers):
 				if get_two_moments:
@@ -98,6 +103,9 @@ for attack in ["little"]: #,"sign_flip", "label_flip"]:
 			match attack:
 				case "little":
 					attacks.little(moments1, number_workers, f)
+
+				case "empire":
+					attacks.empire(moments1, f)
 
 			match aggregation_method:
 				case "avg":
@@ -139,25 +147,58 @@ for attack in ["little"]: #,"sign_flip", "label_flip"]:
 			for w in worker:
 				w.model.load_state_dict(model.state_dict())
 
-		if number_moments == 1:
+		if beta[0] == 0:
+			name = "no_moment"
+		elif number_moments == 1:
 			name = "1_moment"
 		elif get_two_moments == True:
 			name = "2_2_moments"
 		else:
 			name = "2_moments"
 
+		if heter:
+			sub = "heterogenous"
+			f_name = f"{alpha}_{aggregation_method}_{number_workers}_{f}_{rounds}"
+		else:
+			sub = "homogenous"
+			f_name = f"{aggregation_method}_{number_workers}_{f}_{rounds}"
+
+		print(f'results/{sub}/train_loss/{name}/{attack}/{f_name}.npy')
+
 		if save:
-			with open(f'results/train_loss/{name}/{attack}/{aggregation_method}_{number_workers}_{f}_{rounds}.npy', 'wb+') as d:
+			with open(f'results/{sub}/train_loss/{name}/{attack}/{f_name}.npy', 'wb+') as d:
 				np.save(d, losses)
 				d.flush()
 				os.fsync(d.fileno())
+			d.close()
 
-			with open(f'results/test_accuracy/{name}/{attack}/{aggregation_method}_{number_workers}_{f}_{rounds}.npy', 'wb+') as d:
+			with open(f'results/{sub}/test_accuracy/{name}/{attack}/{f_name}.npy', 'wb+') as d:
 				np.save(d, accuracies)
 				d.flush()
 				os.fsync(d.fileno())
+			d.close()
+			
+		if plot:
+			fig = make_subplots(rows=1, cols=2, column_titles = [f"Training Loss: {aggregation_method}", f"Accuracy: {aggregation_method}"])
+			for w in range(number_workers):
+				fig.add_trace(go.Scatter(x=xs, y=losses[w,:], mode='lines', name=f'Model {w}'), row=1, col=1)
 
-		fig = go.Figure()
-		for w in range(number_workers):
-			fig.add_trace(go.Scatter(x=xs, y=losses[w,:], mode='lines', name=f'Model {w}'))
-		fig.show()
+			fig.add_trace(
+				go.Scatter(
+					name = "",
+					x = xs,
+					y = accuracies[0],
+					mode = 'lines',
+					legendgroup = "g1",
+					showlegend= False,
+					line_color='#9274cf'
+				), row=1, col=2
+			)
+
+			fig.show()
+			'''
+			fig = go.Figure()
+			for w in range(number_workers):
+				fig.add_trace(go.Scatter(x=xs, y=losses[w,:], mode='lines', name=f'Model {w}'))
+			fig.show()
+			'''

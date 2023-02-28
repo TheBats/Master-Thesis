@@ -15,3 +15,16 @@ def little(moments, num_workers, f):
 
 		for i in range(f):
 			m[i] = m[i] - std
+
+
+def empire(moments, f):
+	for idx, m in enumerate(moments):
+		for i in range(f):
+			m[i] = -0.9*m[i]
+
+def inf(moments, f, inf):
+	for idx, m in enumerate(moments):
+		for i in range(f):
+			m[i] = inf[idx]
+
+	print(moments)

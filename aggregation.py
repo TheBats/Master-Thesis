@@ -17,11 +17,11 @@ def mda(to_aggregate, n_minus_f):
 		distances = np.zeros((m.size()[0], m.size()[0]))
 		for sub_idx, sub_m in enumerate(m):
 			for sub_sub_idx, sub_sub_m in enumerate(m):
-				distances[sub_idx, sub_sub_idx] = np.linalg.norm((sub_sub_m-sub_m).cpu()) # torch.linalg.norm((sub_sub_m-sub_m), dim=1).sum(dim=1).sum(dim=1).sum(dim=1)
+				distances[sub_idx, sub_sub_idx] = torch.norm((sub_sub_m-sub_m)) # torch.linalg.norm((sub_sub_m-sub_m), dim=1).sum(dim=1).sum(dim=1).sum(dim=1)
 
 		sum_dist = np.sum(distances, 1)
 		sort_idx = np.argsort(sum_dist)
-		
+
 		to_aggregate[idx] = torch.mean(m[sort_idx[:n_minus_f]], 0)
 
 	return to_aggregate
@@ -89,4 +89,4 @@ def krum(to_aggregate, n_minus_f_minus_1, q):
         print(f"To aggregate: {to_aggregate[selection]}")
         return to_aggregate[selection]
 
-# print(mda([torch.tensor([[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [5.0, 1.0, 1.0], [5.0, 1.0, 1.0], [2.5, 10, 11]])], 4))
+# print(mda([torch.tensor([[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], [[5.0, 1.0, 1.0], [5.0, 1.0, 1.0]], [[5.0, 1.0, 1.0], [2.5, 10, 11]]])], 3))
