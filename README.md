@@ -25,9 +25,12 @@ Conda is available here: https://docs.conda.io/projects/conda/en/latest/user-gui
 
 ### Attacks
 
-- Label Flipping
-- Sign Flipping
-- Little 
+- Label Flipping:
+- Sign Flipping:
+- Little:
+- Empire
+- Infinity
+- -Infinity
 
 ### Aggregation
 
@@ -35,3 +38,4 @@ Conda is available here: https://docs.conda.io/projects/conda/en/latest/user-gui
 - Coordinate-Wise Trimmed Mean
 - Mean around Median
 - Coordinate-Wise Median
+- Minimum Diameter Averaging
