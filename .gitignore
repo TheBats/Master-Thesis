@@ -3,3 +3,9 @@
 /datasets
 /.ipynb_checkpoints
 /results
+/cifar10
+/cifar-10-batches-py
+/Plots
+/cifar-10-python.tar.gz
+/*.ipynb
+/Backup

@@ -12,20 +12,23 @@ def avg(to_aggregate):
 
 # Minimum Diameter Averaging
 # 1. Choose a set of minimum cardinality of n-f items with smallest diameter
+# To Do: Speed up by reusing distances
 def mda(to_aggregate, n_minus_f):
+	distances = np.zeros((len(to_aggregate[0]), len(to_aggregate[0])))
 	for idx, m in enumerate(to_aggregate):
-		distances = np.zeros((m.size()[0], m.size()[0]))
 		for sub_idx, sub_m in enumerate(m):
 			for sub_sub_idx, sub_sub_m in enumerate(m):
-				distances[sub_idx, sub_sub_idx] = torch.norm((sub_sub_m-sub_m)) # torch.linalg.norm((sub_sub_m-sub_m), dim=1).sum(dim=1).sum(dim=1).sum(dim=1)
+				distances[sub_idx, sub_sub_idx] += torch.norm((sub_sub_m-sub_m))
 
-		sum_dist = np.sum(distances, 1)
-		sort_idx = np.argsort(sum_dist)
+	arg_sorted_distances = np.argsort(distances, 1)
+	idx_largest_per_row = arg_sorted_distances[:, -1]
+	values_largest_score = [distances[row, col] for (row, col) in enumerate(idx_largest_per_row)]
+	final_idx = np.argsort(values_largest_score)[:n_minus_f]
 
-		to_aggregate[idx] = torch.mean(m[sort_idx[:n_minus_f]], 0)
+	for idx, m in enumerate(to_aggregate):
+		to_aggregate[idx] = torch.mean(m[final_idx], 0)
 
 	return to_aggregate
-
 
 # Coordinate-Wise Trimmed Mean
 # 1. Sort the kth coordinate of the input vector in ascending order
@@ -61,32 +64,6 @@ def cwm(to_aggregate):
 
 	return to_aggregate
 
-# Geometric Median
-# 1. Find a vector minimizing the difference between it and all other vectors
-def gm(to_aggregate):
-	pass
-
-# Krum
-def krum(to_aggregate, n_minus_f_minus_1, q):
-    distances = None
-
-    for i in range(0, to_aggregate.shape[0]):
-        new_row = np.linalg.norm(to_aggregate-to_aggregate[i], axis=1)
-
-        if distances is None:
-            distances = new_row.reshape(1, len(to_aggregate))
-        else:
-            distances = np.append(distances, [new_row], axis=0)
-
-    sorted_scores = np.argsort(distances, axis=1)
-    selection = sorted_scores[:, 1:n_minus_f_minus_1+1]
-    print(selection)
-
-    if q > 1 and n_minus_f_minus_1 > 1:
-        print("In")
-        pass
-    else:
-        print(f"To aggregate: {to_aggregate[selection]}")
-        return to_aggregate[selection]
-
-# print(mda([torch.tensor([[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], [[5.0, 1.0, 1.0], [5.0, 1.0, 1.0]], [[5.0, 1.0, 1.0], [2.5, 10, 11]]])], 3))
+#data = torch.tensor([[[1.0, 2.0, 3.0], [4.0, 5.0, 6.0]], [[5.0, 1.0, 1.0], [2.5, 5., 2.0]], [[10.0, 100.0, 10.0], [10.0, 100.0, 10.0]], [[5.0, 0.0, 1.0], [5.0, 0.0, 1.0]]])
+#print(data.size())
+#print(mda([data], 2))

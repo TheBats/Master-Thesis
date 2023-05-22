@@ -51,6 +51,9 @@ class Worker():
 					self.moment2.append(torch.zeros_like(i, memory_format=torch.preserve_format))
 
 	def take_step(self):
+
+		self.model.train()
+
 		def _view_complex_as_real(tensor_list):
 			return [torch.view_as_real(t) if torch.is_complex(t) else t for t in tensor_list]
 
@@ -72,7 +75,7 @@ class Worker():
 		loss.backward()
 
 		if self.attack in ["inf", "-inf"]:
-			if self.number_moments == 2:
+			if self.get_two_moments:
 				return loss, self.moment1, self.moment2
 
 			return loss, self.moment1
@@ -85,6 +88,7 @@ class Worker():
 			grads.append(i.grad)
 			params.append(i)
 
+		# Regularization 
 		if self.weight_decay != 0:	
 			torch._foreach_add_(grads, params, alpha=self.weight_decay)
 
@@ -116,7 +120,7 @@ class Worker():
 					if self.get_two_moments:
 						return (loss, unbiased1, unbiased2)
 					else:
-						sqrt = torch._foreach_sqrt(unbiased2) #unbiased2)
+						sqrt = torch._foreach_sqrt(unbiased2)
 						torch._foreach_add_(sqrt, self.eps)
 						new = torch._foreach_div(unbiased1, sqrt)
 						return (loss, new)
@@ -162,6 +166,8 @@ class Worker():
 
 
 	def test(self, testset):
+		self.model.train()
+
 		correct = 0 
 		total = 0
 		with torch.no_grad():
